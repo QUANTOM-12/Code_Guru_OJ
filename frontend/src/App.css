@@ -1,0 +1,120 @@
+.App {
+  text-align: center;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.home-screen, .problem-screen, .leaderboard-screen {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.auth-buttons {
+  margin: 20px 0;
+}
+
+.auth-buttons button {
+  margin: 0 10px;
+  padding: 10px 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.problem-list {
+  margin: 30px 0;
+}
+
+.problem-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  margin: 10px 0;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  cursor: pointer;
+  background: white;
+}
+
+.problem-item:hover {
+  background: #f8f9fa;
+}
+
+.difficulty {
+  padding: 5px 10px;
+  border-radius: 3px;
+  color: white;
+  font-size: 12px;
+}
+
+.difficulty.easy { background: #28a745; }
+.difficulty.medium { background: #ffc107; color: black; }
+.difficulty.hard { background: #dc3545; }
+
+.problem-statement {
+  text-align: left;
+  margin: 20px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 5px;
+}
+
+.code-section {
+  text-align: left;
+}
+
+.language-selector {
+  margin: 20px 0;
+}
+
+.language-selector select {
+  padding: 5px 10px;
+  margin-left: 10px;
+}
+
+.code-editor {
+  width: 100%;
+  font-family: 'Courier New', monospace;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.submit-btn {
+  margin: 20px 0;
+  padding: 12px 30px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.verdict {
+  margin: 20px 0;
+  padding: 15px;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+.verdict.accepted { background: #d4edda; color: #155724; }
+.verdict.evaluating { background: #fff3cd; color: #856404; }
+
+.submission-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  margin: 5px 0;
+  border: 1px solid #eee;
+  border-radius: 3px;
+}
+
+.accepted {
+  color: #28a745;
+  font-weight: bold;
+}
