@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  compiler:
+    build: .
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./temp:/app/temp
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - NODE_ENV=production
