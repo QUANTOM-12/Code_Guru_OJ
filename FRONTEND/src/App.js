@@ -2,21 +2,46 @@ import React, { useState } from 'react';
 import './App.css';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('intro'); // 'intro' or 'learners'
+  const [currentPage, setCurrentPage] = useState('homepage'); // 'homepage', 'problems', 'oj', 'leaderboard'
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState(null);
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState('// Write your code here\n#include<iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}');
   const [language, setLanguage] = useState('cpp');
   const [verdict, setVerdict] = useState('');
-  const [learnersTab, setLearnersTab] = useState('leaderboard'); // 'leaderboard' or 'submissions'
+  const [activeTab, setActiveTab] = useState('leaderboard'); // 'leaderboard', 'submissions', 'discussion'
 
   // Sample data
   const problems = [
-    { id: 1, name: "Two Sum", difficulty: "Easy", statement: "Given an array of integers, return indices of two numbers that add up to a target." },
-    { id: 2, name: "Add Two Numbers", difficulty: "Medium", statement: "Add two numbers represented as linked lists." },
-    { id: 3, name: "Longest Substring", difficulty: "Hard", statement: "Find the length of the longest substring without repeating characters." },
-    { id: 4, name: "Valid Parentheses", difficulty: "Easy", statement: "Determine if the input string has valid parentheses." },
-    { id: 5, name: "Merge Sort", difficulty: "Medium", statement: "Implement merge sort algorithm." }
+    { 
+      id: 1, 
+      name: "Two Sum", 
+      difficulty: "Easy", 
+      statement: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.",
+      editorial: "This problem can be solved using a hash map to store the complement of each number as we iterate through the array.",
+      aiComment: "💡 AI Tip: Use a HashMap for O(n) time complexity instead of nested loops."
+    },
+    { 
+      id: 2, 
+      name: "Add Two Numbers", 
+      difficulty: "Medium", 
+      statement: "You are given two non-empty linked lists representing two non-negative integers stored in reverse order.",
+      editorial: "Simulate addition by traversing both linked lists simultaneously and handling carry values.",
+      aiComment: "🤖 AI Insight: Remember to handle different length lists and final carry digit."
+    },
+    { 
+      id: 3, 
+      name: "Longest Substring", 
+      difficulty: "Hard", 
+      statement: "Given a string s, find the length of the longest substring without repeating characters.",
+      editorial: "Use sliding window technique with a set to track characters in current window.",
+      aiComment: "⚡ AI Strategy: Sliding window + Set gives optimal O(n) solution."
+    }
   ];
+
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+    setCurrentPage('problems');
+  };
 
   const handleSubmit = () => {
     setVerdict('Evaluating...');
@@ -25,24 +50,9 @@ function App() {
     }, 2000);
   };
 
-  // Scroll to problems section
-  const scrollToProblems = () => {
-    document.getElementById('problems-section').scrollIntoView({ 
-      behavior: 'smooth' 
-    });
-  };
-
-  // Scroll to login section
-  const scrollToLogin = () => {
-    document.getElementById('login-section').scrollIntoView({ 
-      behavior: 'smooth' 
-    });
-  };
-
-  // PAGE 1: Intro/Landing Page with Scroll
-  const IntroPage = () => (
-    <div className="intro-page">
-      {/* Hero Section */}
+  // PAGE 1: Homepage
+  const Homepage = () => (
+    <div className="homepage">
       <div className="hero-section">
         <div className="hero-content">
           <h1 className="hero-title">Code Guru</h1>
@@ -52,94 +62,220 @@ function App() {
             Welcome to Code Guru - the ultimate online judge platform where you can 
             practice coding problems, compete with others, and sharpen your programming skills.
           </p>
-          <button className="scroll-btn" onClick={scrollToLogin}>
-            Get Started ↓
-          </button>
         </div>
       </div>
       
-      {/* Login/Signup Section */}
-      <div id="login-section" className="login-section">
+      <div className="auth-section">
         <h2>Join Code Guru Community</h2>
         <div className="auth-container">
-          <div className="auth-buttons">
-            <button className="login-btn" onClick={scrollToProblems}>
+          <div className="auth-form">
+            <h3>Login</h3>
+            <input type="email" placeholder="Email" />
+            <input type="password" placeholder="Password" />
+            <button className="login-btn" onClick={handleLogin}>
               Login
             </button>
-            <button className="signup-btn" onClick={scrollToProblems}>
+          </div>
+          <div className="divider">OR</div>
+          <div className="auth-form">
+            <h3>Sign Up</h3>
+            <input type="text" placeholder="Full Name" />
+            <input type="email" placeholder="Email" />
+            <input type="password" placeholder="Password" />
+            <button className="signup-btn" onClick={handleLogin}>
               Sign Up
             </button>
           </div>
-          <p className="auth-description">
-            Already have an account? Login to continue your coding journey.<br/>
-            New here? Sign up to start solving problems and climb the leaderboard!
-          </p>
-        </div>
-      </div>
-
-      {/* Problems Section */}
-      <div id="problems-section" className="problems-section">
-        <div className="section-header">
-          <h2>Practice Problems</h2>
-          <button className="learners-btn" onClick={() => setCurrentPage('learners')}>
-            Go to Learners Page →
-          </button>
-        </div>
-        
-        <div className="problems-grid">
-          {problems.map(problem => (
-            <div key={problem.id} className="problem-card" onClick={() => {
-              setSelectedProblem(problem);
-              // Show problem modal or navigate to problem detail
-              alert(`Selected: ${problem.name}\n${problem.statement}`);
-            }}>
-              <h3>{problem.name}</h3>
-              <span className={`difficulty ${problem.difficulty.toLowerCase()}`}>
-                {problem.difficulty}
-              </span>
-              <p>{problem.statement.substring(0, 80)}...</p>
-            </div>
-          ))}
         </div>
       </div>
     </div>
   );
 
-  // PAGE 2: Learners Page with Switchable Tables
-  const LearnersPage = () => (
-    <div className="learners-page">
-      <div className="learners-header">
-        <button onClick={() => setCurrentPage('intro')} className="back-btn">
-          ← Back to Home
-        </button>
-        <h1>Code Guru - Learners Dashboard</h1>
+  // PAGE 2: Problem List Page
+  const ProblemsPage = () => (
+    <div className="problems-page">
+      <div className="header">
+        <h1>Code Guru</h1>
+        <div className="nav-buttons">
+          <button onClick={() => setCurrentPage('leaderboard')}>Dashboard</button>
+          <button onClick={() => { setIsLoggedIn(false); setCurrentPage('homepage'); }}>Logout</button>
+        </div>
       </div>
       
-      <div className="tables-container">
-        {/* Slide Button Switch */}
-        <div className="table-switcher">
-          <div className="switch-container">
-            <button 
-              className={`switch-btn ${learnersTab === 'leaderboard' ? 'active' : ''}`}
-              onClick={() => setLearnersTab('leaderboard')}
-            >
-              Leaderboard
-            </button>
-            <button 
-              className={`switch-btn ${learnersTab === 'submissions' ? 'active' : ''}`}
-              onClick={() => setLearnersTab('submissions')}
-            >
-              Recent Submissions
-            </button>
-            <div className={`slider ${learnersTab === 'submissions' ? 'slide-right' : ''}`}></div>
+      <div className="problems-container">
+        <div className="problems-main">
+          <h2>Practice Problems</h2>
+          <div className="problems-grid">
+            {problems.map(problem => (
+              <div key={problem.id} className="problem-card" onClick={() => {
+                setSelectedProblem(problem);
+                setCurrentPage('oj');
+              }}>
+                <h3>{problem.name}</h3>
+                <span className={`difficulty ${problem.difficulty.toLowerCase()}`}>
+                  {problem.difficulty}
+                </span>
+                <p>{problem.statement.substring(0, 100)}...</p>
+                <div className="problem-stats">
+                  <span>👥 1.2k solved</span>
+                  <span>✅ 85% success</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
         
-        {/* Table Content */}
-        <div className="table-content">
-          {learnersTab === 'leaderboard' ? (
-            <div className="leaderboard-table">
-              <h3>🏆 Top Performers</h3>
+        {/* Lateral Boxes */}
+        <div className="sidebar">
+          <div className="sidebar-box">
+            <h3>🏆 Leaderboard</h3>
+            <div className="mini-table">
+              <div className="mini-row">
+                <span>#1 CodeMaster</span>
+                <span>950pts</span>
+              </div>
+              <div className="mini-row">
+                <span>#2 AlgoExpert</span>
+                <span>900pts</span>
+              </div>
+              <div className="mini-row">
+                <span>#3 DevNinja</span>
+                <span>850pts</span>
+              </div>
+            </div>
+            <button className="more-btn" onClick={() => setCurrentPage('leaderboard')}>
+              More →
+            </button>
+          </div>
+          
+          <div className="sidebar-box">
+            <h3>📝 Recent Submissions</h3>
+            <div className="mini-table">
+              <div className="mini-row">
+                <span>Two Sum</span>
+                <span className="accepted">AC</span>
+              </div>
+              <div className="mini-row">
+                <span>Valid Parentheses</span>
+                <span className="accepted">AC</span>
+              </div>
+              <div className="mini-row">
+                <span>Longest Substring</span>
+                <span className="wrong">WA</span>
+              </div>
+            </div>
+            <button className="more-btn" onClick={() => setCurrentPage('leaderboard')}>
+              More →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // PAGE 3: OJ Page (Code Editor + Problem + AI + Editorial)
+  const OJPage = () => (
+    <div className="oj-page">
+      <div className="header">
+        <button onClick={() => setCurrentPage('problems')}>← Back to Problems</button>
+        <h1>Code Guru - {selectedProblem?.name}</h1>
+      </div>
+      
+      <div className="oj-container">
+        <div className="problem-panel">
+          <div className="problem-tabs">
+            <button className="tab-btn active">Problem</button>
+            <button className="tab-btn">Editorial</button>
+            <button className="tab-btn">AI Comments</button>
+          </div>
+          
+          <div className="problem-content">
+            <h2>{selectedProblem?.name}</h2>
+            <span className={`difficulty ${selectedProblem?.difficulty.toLowerCase()}`}>
+              {selectedProblem?.difficulty}
+            </span>
+            
+            <div className="problem-statement">
+              <h3>Problem Statement</h3>
+              <p>{selectedProblem?.statement}</p>
+            </div>
+            
+            <div className="ai-comment">
+              <h3>🤖 AI Comment</h3>
+              <p>{selectedProblem?.aiComment}</p>
+            </div>
+            
+            <div className="editorial">
+              <h3>📚 Editorial</h3>
+              <p>{selectedProblem?.editorial}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="code-panel">
+          <div className="code-header">
+            <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+              <option value="cpp">C++</option>
+              <option value="python">Python</option>
+              <option value="java">Java</option>
+              <option value="javascript">JavaScript</option>
+            </select>
+            <button onClick={handleSubmit} className="submit-btn">
+              Submit
+            </button>
+          </div>
+          
+          <textarea
+            className="code-editor"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            rows={25}
+          />
+          
+          {verdict && (
+            <div className={`verdict ${verdict.toLowerCase()}`}>
+              <strong>Verdict: {verdict}</strong>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // PAGE 4: Full Leaderboard & Recent Submissions & Discussion
+  const LeaderboardPage = () => (
+    <div className="leaderboard-page">
+      <div className="header">
+        <button onClick={() => setCurrentPage('problems')}>← Back to Problems</button>
+        <h1>Code Guru - Dashboard</h1>
+      </div>
+      
+      <div className="dashboard-container">
+        <div className="tab-switcher">
+          <button 
+            className={`tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('leaderboard')}
+          >
+            🏆 Leaderboard
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'submissions' ? 'active' : ''}`}
+            onClick={() => setActiveTab('submissions')}
+          >
+            📝 Recent Submissions
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'discussion' ? 'active' : ''}`}
+            onClick={() => setActiveTab('discussion')}
+          >
+            💬 Discussion
+          </button>
+        </div>
+        
+        <div className="tab-content">
+          {activeTab === 'leaderboard' && (
+            <div className="full-table">
+              <h2>🏆 Top Performers</h2>
               <table>
                 <thead>
                   <tr>
@@ -169,9 +305,11 @@ function App() {
                 </tbody>
               </table>
             </div>
-          ) : (
-            <div className="submissions-table">
-              <h3>📝 Recent Submissions</h3>
+          )}
+          
+          {activeTab === 'submissions' && (
+            <div className="full-table">
+              <h2>📝 Recent Submissions</h2>
               <table>
                 <thead>
                   <tr>
@@ -186,12 +324,7 @@ function App() {
                   {[
                     { problem: "Two Sum", user: "CodeMaster", language: "C++", status: "Accepted", time: "2 min ago" },
                     { problem: "Valid Parentheses", user: "AlgoExpert", language: "Python", status: "Accepted", time: "5 min ago" },
-                    { problem: "Longest Substring", user: "DevNinja", language: "Java", status: "Wrong Answer", time: "8 min ago" },
-                    { problem: "Add Two Numbers", user: "ByteWarrior", language: "C++", status: "Accepted", time: "12 min ago" },
-                    { problem: "Merge Sort", user: "CodeCrusher", language: "Python", status: "Time Limit Exceeded", time: "15 min ago" },
-                    { problem: "Two Sum", user: "NewCoder", language: "JavaScript", status: "Compilation Error", time: "18 min ago" },
-                    { problem: "Valid Parentheses", user: "ProSolver", language: "C++", status: "Accepted", time: "22 min ago" },
-                    { problem: "Longest Substring", user: "QuickCoder", language: "Python", status: "Accepted", time: "25 min ago" }
+                    { problem: "Longest Substring", user: "DevNinja", language: "Java", status: "Wrong Answer", time: "8 min ago" }
                   ].map((submission, index) => (
                     <tr key={index}>
                       <td>{submission.problem}</td>
@@ -207,6 +340,23 @@ function App() {
               </table>
             </div>
           )}
+          
+          {activeTab === 'discussion' && (
+            <div className="discussion-panel">
+              <h2>💬 Discussion Forum</h2>
+              <div className="discussion-thread">
+                <h3>Two Sum - Multiple Solutions Discussion</h3>
+                <p><strong>CodeMaster:</strong> What's the best approach for this problem?</p>
+                <p><strong>AlgoExpert:</strong> HashMap approach gives O(n) time complexity!</p>
+                <p><strong>DevNinja:</strong> Here's my Python solution...</p>
+              </div>
+              <div className="discussion-thread">
+                <h3>Longest Substring - Sliding Window Technique</h3>
+                <p><strong>ByteWarrior:</strong> Can someone explain sliding window?</p>
+                <p><strong>CodeCrusher:</strong> It's like a moving window over the string...</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -214,8 +364,10 @@ function App() {
 
   return (
     <div className="App">
-      {currentPage === 'intro' && <IntroPage />}
-      {currentPage === 'learners' && <LearnersPage />}
+      {currentPage === 'homepage' && <Homepage />}
+      {currentPage === 'problems' && isLoggedIn && <ProblemsPage />}
+      {currentPage === 'oj' && isLoggedIn && <OJPage />}
+      {currentPage === 'leaderboard' && isLoggedIn && <LeaderboardPage />}
     </div>
   );
 }
