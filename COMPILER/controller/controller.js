@@ -1,20 +1,44 @@
-const { runCodeInDocker } = require('../services/dockerService');
-const { evaluate } = require('../services/judgeservice.js');
+const { executeInDocker } = require('../services/dockerExecute');
 
-exports.compileAndJudge = async (req, res) => {
-  const { code, language, input, testCases = [] } = req.body;
-  if (!code || !language) return res.status(400).json({ error: 'Missing code/language' });
-
+async function runCode(req, res) {
   try {
-    let results = [];
-    for (let test of testCases) {
-      const { stdout, stderr, error } = await runCodeInDocker(code, language, test.input || input);
-      const verdict = evaluate(stdout, test.output, stderr, error);
-      results.push({ input: test.input, expected: test.output, output: stdout, verdict });
-      if (verdict !== 'Accepted') break; // Stop on first failure for efficiency
+    const { code, language, input = '' } = req.body;
+
+    // Validation
+    if (!code || !language) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: code and language'
+      });
     }
-    res.json({ results });
-  } catch (err) {
-    res.status(500).json({ error: err.message || err });
+
+    // Supported languages
+    const supportedLanguages = ['python', 'cpp', 'java', 'javascript'];
+    if (!supportedLanguages.includes(language)) {
+      return res.status(400).json({
+        success: false,
+        error: `Unsupported language. Supported: ${supportedLanguages.join(', ')}`
+      });
+    }
+
+    // Execute code in Docker
+    const result = await executeInDocker(code, language, input);
+    
+    res.json({
+      success: result.success,
+      output: result.output || '',
+      error: result.error || null,
+      execution_time: result.executionTime || 0
+    });
+    
+  } catch (error) {
+    console.error('Compiler error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    });
   }
-};
+}
+
+module.exports = { runCode };

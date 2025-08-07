@@ -1,5 +1,5 @@
 const express = require('express');
-const { compileAndJudge } = require('../controllers/compileController');
+const { compileAndJudge } = require('../controllers/controller');
 const router = express.Router();
 
 router.post('/run', compileAndJudge);
