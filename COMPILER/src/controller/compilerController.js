@@ -1,10 +1,11 @@
-const { executeInDocker } = require('../services/dockerExecute');
+const { executeInDocker } = require('../services/dockerExecutor');
 
 async function runCode(req, res) {
   try {
+    console.log('Received request:', req.body);
+    
     const { code, language, input = '' } = req.body;
 
-    // Validation
     if (!code || !language) {
       return res.status(400).json({
         success: false,
@@ -12,8 +13,7 @@ async function runCode(req, res) {
       });
     }
 
-    // Supported languages
-    const supportedLanguages = ['python', 'cpp', 'java', 'javascript'];
+    const supportedLanguages = ['python', 'cpp', 'javascript'];
     if (!supportedLanguages.includes(language)) {
       return res.status(400).json({
         success: false,
@@ -21,14 +21,12 @@ async function runCode(req, res) {
       });
     }
 
-    // Execute code in Docker
-    const result = await executeInDocker(code, language, input);
-    
+    // For now, let's return a simple response to test
     res.json({
-      success: result.success,
-      output: result.output || '',
-      error: result.error || null,
-      execution_time: result.executionTime || 0
+      success: true,
+      output: `Hello from Code Guru! Language: ${language}`,
+      error: null,
+      execution_time: 100
     });
     
   } catch (error) {
@@ -41,4 +39,5 @@ async function runCode(req, res) {
   }
 }
 
+// THIS IS CRUCIAL - Make sure you export the function
 module.exports = { runCode };
