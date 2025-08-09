@@ -1,3 +1,70 @@
+// Add this import at the top
+const aiService = require('../services/aiService');
+
+// Update your processSubmission function to include AI feedback
+async function processSubmission(submissionId, problem, code, language) {
+  try {
+    const submission = await Submission.findById(submissionId);
+    if (!submission) return;
+
+    // ... existing submission processing logic ...
+
+    // 🤖 NEW: Generate AI explanation after processing
+    if (submission.status !== 'Pending' && submission.status !== 'Running') {
+      try {
+        const aiExplanation = await aiService.generateCodeExplanation(
+          code, 
+          language, 
+          submission.status
+        );
+        
+        if (aiExplanation) {
+          submission.aiExplanation = aiExplanation;
+        }
+      } catch (error) {
+        console.error('AI explanation generation failed:', error.message);
+        // Don't fail the submission if AI fails
+      }
+    }
+
+    await submission.save();
+
+  } catch (error) {
+    console.error('Error processing submission:', error);
+    // ... existing error handling
+  }
+}
+
+// 🤖 NEW: Add AI hint endpoint
+exports.getHint = async (req, res) => {
+  try {
+    const { problemId } = req.params;
+    const { code } = req.body;
+
+    const problem = await Problem.findById(problemId);
+    if (!problem) {
+      return res.status(404).json({
+        success: false,
+        error: 'Problem not found'
+      });
+    }
+
+    const hint = await aiService.generateHint(problem.description, code);
+    
+    res.status(200).json({
+      success: true,
+      hint: hint || 'AI hint generation is currently unavailable'
+    });
+
+  } catch (error) {
+    console.error('Hint generation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate hint'
+    });
+  }
+};
+
 const { executeInDocker } = require('../services/dockerExecutor');
 
 async function runCode(req, res) {
