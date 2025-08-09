@@ -1,6 +1,8 @@
 {
   "name": "code-guru-frontend",
   "version": "0.1.0",
+  "author": "Sahasya P",
+  "license": "MIT",
   "private": true,
   "dependencies": {
     "@testing-library/dom": "^10.4.1",

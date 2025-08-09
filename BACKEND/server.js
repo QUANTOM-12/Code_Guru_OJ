@@ -32,7 +32,7 @@ connectDB();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: process.env.CLIENT_URL || 'http://localhost:3005',
   credentials: true
 }));
 
@@ -86,11 +86,14 @@ app.use('*', (req, res) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8001;
 
 const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`🚀 Online Judge Backend running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`📡 Frontend URL: ${process.env.CLIENT_URL}`);
+  console.log(`⚡ Compiler URL: ${process.env.COMPILER_URL}`);
 });
+
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
