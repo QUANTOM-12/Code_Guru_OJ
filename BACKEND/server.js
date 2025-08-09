@@ -37,12 +37,13 @@ app.use(cors({
 }));
 
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: (process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000, // 15 minutes
-  max: process.env.RATE_LIMIT_MAX_REQUESTS || 100,
-  message: 'Too many requests from this IP, please try again later.'
-});
-app.use('/api/', limiter);
+const { generalLimiter, authLimiter, submissionLimiter } = require('./middleware/rateLimiter');
+
+// Apply specific rate limiters (ORDER MATTERS!)
+app.use('/api/auth', authLimiter);
+app.use('/api/compiler/submit', submissionLimiter);
+app.use('/api/compiler/run', submissionLimiter);
+app.use('/api/', generalLimiter);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
