@@ -1,5 +1,5 @@
 const { executeInDocker } = require('../services/dockerExecutor');
-const aiService = require('../services/aiService');
+const aiService = require('../services/aiServices');
 
 // Simple code execution for testing/demos
 async function runCode(req, res) {

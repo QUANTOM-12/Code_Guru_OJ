@@ -13,7 +13,7 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - MAX_MEMORY=256m
       - MAX_CPU=0.5
-      - FRONTEND_URL=http://localhost:3000
+      - FRONTEND_URL=http://localhost:300
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

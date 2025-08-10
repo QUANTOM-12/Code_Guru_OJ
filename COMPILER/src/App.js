@@ -26,7 +26,7 @@ app.get('/health', (req, res) => {
     status: 'OK',
     message: 'Code Guru Compiler Service is running',
     timestamp: new Date().toISOString(),
-    ai_enabled: !!process.env.GEMINI_API_KEY
+    ai_enabled: !!process.env.PERPLEXITY_API_KEY
   });
 });
 
@@ -50,7 +50,7 @@ app.use('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🔧 Code Guru Compiler running on port ${PORT}`);
-  console.log(`🤖 AI Integration: ${process.env.GEMINI_API_KEY ? 'ENABLED' : 'DISABLED'}`);
+  console.log(`🤖 AI Integration: ${process.env.PERPLEXITY_API_KEY ? 'ENABLED' : 'DISABLED'}`);
 });
 
 module.exports = app;

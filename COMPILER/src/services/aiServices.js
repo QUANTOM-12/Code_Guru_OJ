@@ -3,13 +3,12 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 class AIService {
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY;
-    
     if (!this.apiKey) {
-      console.warn('⚠️ GEMINI_API_KEY not configured. AI features disabled.');
+      console.warn('⚠️ GEMINI_API_KEY not set. AI features disabled.');
       this.genAI = null;
       return;
     }
-    
+
     try {
       this.genAI = new GoogleGenerativeAI(this.apiKey);
       this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
@@ -26,7 +25,6 @@ class AIService {
 
   async generateCodeExplanation(code, language, verdict) {
     if (!this.genAI) return null;
-
     try {
       const prompt = `
 Analyze this ${language} code submission that received verdict: ${verdict}
@@ -48,7 +46,6 @@ Keep response under 300 words and educational.
       const result = await this.model.generateContent(prompt);
       const response = result.response;
       return response.text();
-
     } catch (error) {
       console.error('AI explanation error:', error.message);
       return null;
@@ -57,7 +54,6 @@ Keep response under 300 words and educational.
 
   async generateHint(problemStatement, userCode, language) {
     if (!this.genAI) return null;
-
     try {
       const prompt = `
 Problem: ${problemStatement.substring(0, 800)}...
@@ -69,7 +65,7 @@ ${userCode.substring(0, 1000)}...
 
 Provide a helpful hint to guide the user toward the solution WITHOUT giving away the answer. Focus on:
 - Algorithmic approach suggestions
-- Common pitfalls to avoid  
+- Common pitfalls to avoid
 - Edge cases to consider
 - Better data structures if needed
 
@@ -78,16 +74,14 @@ Keep hint under 150 words.
 
       const result = await this.model.generateContent(prompt);
       return result.response.text();
-
     } catch (error) {
       console.error('AI hint generation error:', error.message);
       return null;
     }
   }
 
-  async debugCode(code, language, error) {
+  async debugCode(code, language, errorSummary) {
     if (!this.genAI) return null;
-
     try {
       const prompt = `
 Debug this ${language} code that produced an error:
@@ -97,7 +91,7 @@ Code:
 ${code}
 \`\`\`
 
-Error: ${error}
+Error: ${errorSummary}
 
 Provide:
 1. **Root Cause**: What's causing the error
@@ -109,7 +103,6 @@ Be concise and practical.
 
       const result = await this.model.generateContent(prompt);
       return result.response.text();
-
     } catch (error) {
       console.error('AI debug error:', error.message);
       return null;
@@ -118,7 +111,6 @@ Be concise and practical.
 
   async optimizeCode(code, language) {
     if (!this.genAI) return null;
-
     try {
       const prompt = `
 Optimize this ${language} code for better performance:
@@ -128,7 +120,7 @@ ${code}
 \`\`\`
 
 Suggest:
-1. **Performance improvements** 
+1. **Performance improvements**
 2. **Memory optimizations**
 3. **Best practices** for ${language}
 4. **Code style** improvements
@@ -138,7 +130,6 @@ Provide specific, actionable suggestions.
 
       const result = await this.model.generateContent(prompt);
       return result.response.text();
-
     } catch (error) {
       console.error('AI optimization error:', error.message);
       return null;
