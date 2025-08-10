@@ -17,7 +17,7 @@ const codeExecutionLimiter = rateLimit({
 });
 
 const aiLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute  
+  windowMs: 1 * 60 * 1000, // 1 minute
   max: 5, // 5 AI requests per minute (Gemini free tier limit)
   message: {
     success: false,
@@ -30,21 +30,20 @@ const aiLimiter = rateLimit({
 // Input validation middleware
 const validateCodeInput = (req, res, next) => {
   const { code, language } = req.body;
-  
   if (!code || typeof code !== 'string') {
     return res.status(400).json({
       success: false,
       error: 'Valid code is required'
     });
   }
-  
+
   if (!language || typeof language !== 'string') {
     return res.status(400).json({
       success: false,
       error: 'Programming language is required'
     });
   }
-  
+
   const supportedLanguages = ['python', 'cpp', 'java', 'javascript'];
   if (!supportedLanguages.includes(language.toLowerCase())) {
     return res.status(400).json({
@@ -52,7 +51,7 @@ const validateCodeInput = (req, res, next) => {
       error: `Unsupported language. Supported: ${supportedLanguages.join(', ')}`
     });
   }
-  
+
   next();
 };
 
@@ -64,7 +63,7 @@ router.post('/optimize', aiLimiter, validateCodeInput, optimizeCode);
 
 // Test AI availability
 router.get('/ai-status', (req, res) => {
-  const aiService = require('../services/aiService');
+  const aiService = require('../services/aiServices'); // Fixed path
   res.json({
     success: true,
     aiEnabled: aiService.isEnabled(),

@@ -1,10 +1,8 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import compilerRoutes from './routes/compilerRoutes.js';
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const compilerRoutes = require('./routes/compilerRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -54,6 +52,11 @@ app.use('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🔧 Code Guru Compiler running on port ${PORT}`);
   console.log(`🤖 AI Integration: ${process.env.GEMINI_API_KEY ? 'ENABLED' : 'DISABLED'}`);
+  
+  // Debug: Print the API key (first few chars only for security)
+  if (process.env.GEMINI_API_KEY) {
+    console.log(`✅ Gemini API Key loaded: ${process.env.GEMINI_API_KEY.substring(0, 8)}...`);
+  }
 });
 
 module.exports = app;
