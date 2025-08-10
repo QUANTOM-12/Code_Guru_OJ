@@ -1,30 +1,64 @@
 version: '3.8'
 
 services:
-  compiler:
-    build: .
+  mongodb:
+    image: mongo:latest
+    container_name: codeguru_mongo
     ports:
-      - "5001:5001"
+      - "27017:27017"
     volumes:
-      - ./temp:/app/temp
-      - /var/run/docker.sock:/var/run/docker.sock
+      - mongo_data:/data/db
+    networks:
+      - codeguru-network
+
+  backend:
+    build: ./BACKEND
+    container_name: codeguru_backend
+    ports:
+      - "8001:8001"  # Changed from 3000 to 8001
     environment:
       - NODE_ENV=production
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - MAX_MEMORY=256m
-      - MAX_CPU=0.5
-      - FRONTEND_URL=http://localhost:3005
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - DAC_OVERRIDE  # Needed for Docker socket
-    user: "1001:1001"
+      - PORT=8001
+      - MONGODB_URI=${MONGODB_URI}
+      - COMPILER_URL=http://compiler:5001
+      - JWT_SECRET=${JWT_SECRET}
+      - CLIENT_URL=http://frontend:3000
+    depends_on:
+      - mongodb
+      - compiler
     networks:
-      - compiler-network
+      - codeguru-network
+
+  compiler:
+    build: ./COMPILER
+    container_name: codeguru_compiler
+    ports:
+      - "5001:5001"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - PORT=5001
+      - NODE_ENV=production
+    volumes:
+      - ./COMPILER/temp:/app/temp
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - codeguru-network
+
+  frontend:
+    build: ./frontend  # Changed from FRONTEND to frontend
+    container_name: codeguru_frontend
+    ports:
+      - "3005:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8001/api  # Point to backend port 8001
+    depends_on:
+      - backend
+    networks:
+      - codeguru-network
+
+volumes:
+  mongo_data:
 
 networks:
-  compiler-network:
+  codeguru-network:
     driver: bridge

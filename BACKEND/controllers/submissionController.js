@@ -1,162 +1,184 @@
+const compilerService = require('../services/compilerService');
+const Problem = require('../models/Problem'); 
+
+// Submit solution
+exports.submitSolution = async (req, res) => {
+  try {
+    const { problemId, code, language } = req.body;
+    const userId = req.user.id;
+
+    // Validation
+    if (!problemId || !code || !language) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: problemId, code, language'
+      });
+    }
+
+    console.log(`📝 New submission: User ${userId}, Problem ${problemId}, Language ${language}`);
+
+    // Get problem and test cases
+    const problem = await Problem.findById(problemId);
+    if (!problem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Problem not found'
+      });
+    }
+
+    const testCases = problem.testCases;
+
+    let verdict = 'Accepted';
+    let passedTestCases = 0;
+    let executionDetails = [];
+    let aiExplanation = null;
+
+    console.log(`🧪 Running ${testCases.length} test cases...`);
+
+    // Run code against all test cases
+    for (let i = 0; i < testCases.length; i++) {
+      const testCase = testCases[i];
+      console.log(`⚡ Running test case ${i + 1}/${testCases.length}`);
+      
+      const result = await compilerService.executeCode(code, language, testCase.input);
+      
+      executionDetails.push({
+        testCase: i + 1,
+        input: testCase.input,
+        expectedOutput: testCase.output,
+        actualOutput: result.output,
+        success: result.success,
+        executionTime: result.executionTime,
+        error: result.error
+      });
+
+      if (!result.success) {
+        verdict = result.error || 'Runtime Error';
+        console.log(`❌ Test case ${i + 1} failed: ${verdict}`);
+        break;
+      }
+
+      if (result.output.trim() !== testCase.output.trim()) {
+        verdict = 'Wrong Answer';
+        console.log(`❌ Test case ${i + 1}: Wrong Answer`);
+        break;
+      }
+
+      passedTestCases++;
+      console.log(`✅ Test case ${i + 1} passed`);
+    }
+
+    // Get AI explanation
+    if (executionDetails.length > 0 && executionDetails[0].aiExplanation) {
+      aiExplanation = executionDetails.aiExplanation;
+    }
+
+    // Save submission (assuming you have a Submission model)
+    const submission = new Submission({
+      user: userId,
+      problem: problemId,
+      code,
+      language,
+      verdict,
+      passedTestCases,
+      totalTestCases: testCases.length,
+      executionDetails: executionDetails.slice(0, 3), // Only store first 3 for space
+      aiExplanation,
+      submittedAt: new Date()
+    });
+
+    await submission.save();
+    console.log(`💾 Submission saved: ${verdict}`);
+
+    res.json({
+      success: true,
+      submission: {
+        id: submission._id,
+        verdict,
+        passedTestCases,
+        totalTestCases: testCases.length,
+        aiExplanation,
+        submittedAt: submission.submittedAt,
+        executionDetails: executionDetails.length <= 3 ? executionDetails : executionDetails.slice(0, 3)
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Submission error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get AI hint
+exports.getHint = async (req, res) => {
+  try {
+    const { problemId, code, language } = req.body;
+    
+    if (!problemId || !code || !language) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields'
+      });
+    }
+
+    const problem = await Problem.findById(problemId);
+    if (!problem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Problem not found'
+      });
+    }
+
+    console.log(`💡 Generating AI hint for problem ${problemId}`);
+    const hintResponse = await compilerService.getAIHint(
+      code, 
+      language, 
+      problem.statement
+    );
+
+    res.json(hintResponse);
+  } catch (error) {
+    console.error('❌ Hint error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate hint'
+    });
+  }
+};
+
 const Submission = require('../models/Submission');
 
-// @desc    Get all submissions
-// @route   GET /api/submissions
-// @access  Private
+// GET /api/submissions
 exports.getSubmissions = async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
-    const skip = (page - 1) * limit;
-
-    const filter = req.user.role === 'admin' ? {} : { user: req.user.id };
-
-    const submissions = await Submission.find(filter)
-      .populate('user', 'username firstName lastName')
-      .populate('problem', 'title slug difficulty')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const totalSubmissions = await Submission.countDocuments(filter);
-
-    res.status(200).json({
-      success: true,
-      data: submissions,
-      pagination: {
-        page,
-        pages: Math.ceil(totalSubmissions / limit),
-        total: totalSubmissions
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Server Error',
-      error: error.message
-    });
-  }
+  const subs = await Submission.find().sort({ createdAt: -1 }).limit(100);
+  res.json({ success: true, data: subs });
 };
 
-// @desc    Get submission by ID
-// @route   GET /api/submissions/:id
-// @access  Private
+// GET /api/submissions/:id
 exports.getSubmissionById = async (req, res) => {
-  try {
-    const submission = await Submission.findById(req.params.id)
-      .populate('user', 'username firstName lastName')
-      .populate('problem', 'title slug difficulty');
-
-    if (!submission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Submission not found'
-      });
-    }
-
-    // Check if user owns this submission or is admin
-    if (submission.user._id.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to view this submission'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: submission
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Server Error',
-      error: error.message
-    });
-  }
+  const sub = await Submission.findById(req.params.id);
+  if (!sub) return res.status(404).json({ success: false, message: 'Not found' });
+  res.json({ success: true, data: sub });
 };
 
-// @desc    Get submissions for a specific user
-// @route   GET /api/submissions/user/:userId
-// @access  Private
+// GET /api/submissions/user/:userId
 exports.getUserSubmissions = async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const skip = (page - 1) * limit;
-
-    const submissions = await Submission.find({ user: req.params.userId })
-      .populate('problem', 'title slug difficulty points')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const totalSubmissions = await Submission.countDocuments({ user: req.params.userId });
-
-    res.status(200).json({
-      success: true,
-      data: submissions,
-      pagination: {
-        page,
-        pages: Math.ceil(totalSubmissions / limit),
-        total: totalSubmissions
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Server Error',
-      error: error.message
-    });
-  }
+  const subs = await Submission.find({ user: req.params.userId }).sort({ createdAt: -1 });
+  res.json({ success: true, data: subs });
 };
 
-// @desc    Get recent submissions
-// @route   GET /api/submissions/recent
-// @access  Private
+// GET /api/submissions/recent
 exports.getRecentSubmissions = async (req, res) => {
-  try {
-    const submissions = await Submission.find()
-      .populate('user', 'username')
-      .populate('problem', 'title slug difficulty')
-      .sort({ createdAt: -1 })
-      .limit(10);
-
-    res.status(200).json({
-      success: true,
-      data: submissions
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Server Error',
-      error: error.message
-    });
-  }
+  const subs = await Submission.find().sort({ createdAt: -1 }).limit(10);
+  res.json({ success: true, data: subs });
 };
 
-// @desc    Delete submission
-// @route   DELETE /api/submissions/:id
-// @access  Private/Admin
+// DELETE /api/submissions/:id
 exports.deleteSubmission = async (req, res) => {
-  try {
-    const submission = await Submission.findByIdAndDelete(req.params.id);
-
-    if (!submission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Submission not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Submission deleted successfully'
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Server Error',
-      error: error.message
-    });
-  }
+  await Submission.findByIdAndDelete(req.params.id);
+  res.json({ success: true, message: 'Deleted' });
 };
