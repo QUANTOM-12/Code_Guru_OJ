@@ -1,10 +1,10 @@
-require('dotenv').config();
-import 'dotenv/config'
+import dotenv from 'dotenv';
+dotenv.config();
 
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const compilerRoutes = require('./routes/compilerRoutes');
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import compilerRoutes from './routes/compilerRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5001;
