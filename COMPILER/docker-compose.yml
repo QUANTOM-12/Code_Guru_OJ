@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   compiler:
     build: .
@@ -9,3 +10,21 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - NODE_ENV=production
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - MAX_MEMORY=256m
+      - MAX_CPU=0.5
+      - FRONTEND_URL=http://localhost:3000
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_OVERRIDE  # Needed for Docker socket
+    user: "1001:1001"
+    networks:
+      - compiler-network
+
+networks:
+  compiler-network:
+    driver: bridge
