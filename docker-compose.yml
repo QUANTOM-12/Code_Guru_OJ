@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mongodb:
     image: mongo:latest
@@ -15,14 +13,14 @@ services:
     build: ./BACKEND
     container_name: codeguru_backend
     ports:
-      - "8001:8001"  # Changed from 3000 to 8001
+      - "8001:8001"
     environment:
       - NODE_ENV=production
       - PORT=8001
       - MONGODB_URI=${MONGODB_URI}
       - COMPILER_URL=http://compiler:5001
       - JWT_SECRET=${JWT_SECRET}
-      - CLIENT_URL=http://frontend:3000
+      - CLIENT_URL=http://frontend:3005
     depends_on:
       - mongodb
       - compiler
@@ -45,12 +43,12 @@ services:
       - codeguru-network
 
   frontend:
-    build: ./frontend  # Changed from FRONTEND to frontend
+    build: ./frontend
     container_name: codeguru_frontend
     ports:
-      - "3005:3000"
+      - "3005:3005"
     environment:
-      - REACT_APP_API_URL=http://localhost:8001/api  # Point to backend port 8001
+      - REACT_APP_API_URL=http://localhost:8001/api
     depends_on:
       - backend
     networks:
