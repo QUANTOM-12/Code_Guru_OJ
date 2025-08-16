@@ -1,3 +1,8 @@
+const { 
+  sendVerificationEmail, 
+  sendPasswordResetEmail,
+  sendWelcomeEmail 
+} = require('../utils/emailService');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
