@@ -1,7 +1,8 @@
 const { body, validationResult } = require('express-validator');
 const mongoose = require('mongoose');
+const User = require('../models/User');
 
-// User Registration Validation
+// User Registration Validation with Database Checks
 exports.registerValidation = [
   body('firstName')
     .trim()
@@ -10,8 +11,9 @@ exports.registerValidation = [
     .isLength({ min: 1, max: 50 })
     .withMessage('First name must be between 1-50 characters')
     .matches(/^[a-zA-Z\s]+$/)
-    .withMessage('First name can only contain letters and spaces'),
-    
+    .withMessage('First name can only contain letters and spaces')
+    .escape(),
+
   body('lastName')
     .trim()
     .notEmpty()
@@ -19,8 +21,9 @@ exports.registerValidation = [
     .isLength({ min: 1, max: 50 })
     .withMessage('Last name must be between 1-50 characters')
     .matches(/^[a-zA-Z\s]+$/)
-    .withMessage('Last name can only contain letters and spaces'),
-    
+    .withMessage('Last name can only contain letters and spaces')
+    .escape(),
+
   body('username')
     .trim()
     .isLength({ min: 3, max: 20 })
@@ -28,24 +31,42 @@ exports.registerValidation = [
     .matches(/^[a-zA-Z0-9_]+$/)
     .withMessage('Username can only contain letters, numbers, and underscores')
     .custom(async (value) => {
-      // Check if username is already taken (you can implement this later)
+      const existingUser = await User.findOne({ username: value.toLowerCase() });
+      if (existingUser) {
+        throw new Error('Username already in use');
+      }
       return true;
-    }),
-    
+    })
+    .customSanitizer(value => value.toLowerCase()),
+
   body('email')
     .isEmail()
-    .normalizeEmail()
     .withMessage('Please enter a valid email')
+    .normalizeEmail({
+      gmail_remove_dots: false,
+      gmail_remove_subaddress: false
+    })
     .custom(async (value) => {
-      // Check if email is already taken (you can implement this later)
+      const existingUser = await User.findOne({ email: value.toLowerCase() });
+      if (existingUser) {
+        throw new Error('Email already in use');
+      }
       return true;
     }),
-    
+
   body('password')
     .isLength({ min: 6, max: 100 })
     .withMessage('Password must be between 6-100 characters')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
     .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number')
+    .custom((value) => {
+      // Check for common weak passwords
+      const weakPasswords = ['password', '123456', 'qwerty', 'abc123', 'password123'];
+      if (weakPasswords.includes(value.toLowerCase())) {
+        throw new Error('Password is too common. Please choose a stronger password');
+      }
+      return true;
+    })
 ];
 
 // User Login Validation
@@ -55,13 +76,131 @@ exports.loginValidation = [
     .notEmpty()
     .withMessage('Email or username is required')
     .isLength({ min: 3, max: 100 })
-    .withMessage('Identifier must be between 3-100 characters'),
-    
+    .withMessage('Identifier must be between 3-100 characters')
+    .escape(),
+
   body('password')
     .notEmpty()
     .withMessage('Password is required')
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Password cannot be empty')
+];
+
+// Email validation for forgot password
+exports.forgotPasswordValidation = [
+  body('email')
+    .isEmail()
+    .withMessage('Please enter a valid email')
+    .normalizeEmail()
+];
+
+// Password reset validation
+exports.resetPasswordValidation = [
+  body('password')
     .isLength({ min: 6, max: 100 })
     .withMessage('Password must be between 6-100 characters')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number')
+];
+
+// Change password validation
+exports.changePasswordValidation = [
+  body('currentPassword')
+    .notEmpty()
+    .withMessage('Current password is required'),
+    
+  body('newPassword')
+    .isLength({ min: 6, max: 100 })
+    .withMessage('New password must be between 6-100 characters')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('New password must contain at least one uppercase letter, one lowercase letter, and one number')
+    .custom((value, { req }) => {
+      if (value === req.body.currentPassword) {
+        throw new Error('New password must be different from current password');
+      }
+      return true;
+    })
+];
+
+// User Update Validation with Duplicate Checks
+exports.userUpdateValidation = [
+  body('firstName')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('First name must be between 1-50 characters')
+    .matches(/^[a-zA-Z\s]+$/)
+    .withMessage('First name can only contain letters and spaces')
+    .escape(),
+
+  body('lastName')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('Last name must be between 1-50 characters')
+    .matches(/^[a-zA-Z\s]+$/)
+    .withMessage('Last name can only contain letters and spaces')
+    .escape(),
+
+  body('email')
+    .optional()
+    .isEmail()
+    .withMessage('Please enter a valid email')
+    .normalizeEmail()
+    .custom(async (value, { req }) => {
+      if (value) {
+        const existingUser = await User.findOne({ 
+          email: value.toLowerCase(),
+          _id: { $ne: req.user.id }
+        });
+        if (existingUser) {
+          throw new Error('Email already in use');
+        }
+      }
+      return true;
+    }),
+
+  body('username')
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 20 })
+    .withMessage('Username must be between 3 and 20 characters')
+    .matches(/^[a-zA-Z0-9_]+$/)
+    .withMessage('Username can only contain letters, numbers, and underscores')
+    .custom(async (value, { req }) => {
+      if (value) {
+        const existingUser = await User.findOne({ 
+          username: value.toLowerCase(),
+          _id: { $ne: req.user.id }
+        });
+        if (existingUser) {
+          throw new Error('Username already in use');
+        }
+      }
+      return true;
+    })
+    .customSanitizer(value => value ? value.toLowerCase() : value),
+
+  body('bio')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Bio cannot exceed 500 characters')
+    .escape(),
+
+  body('country')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Country name too long')
+    .escape(),
+
+  body('institution')
+    .optional()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Institution name too long')
+    .escape()
 ];
 
 // Problem Validation
@@ -71,54 +210,71 @@ exports.problemValidation = [
     .notEmpty()
     .withMessage('Problem title is required')
     .isLength({ min: 5, max: 200 })
-    .withMessage('Title must be between 5-200 characters'),
-    
+    .withMessage('Title must be between 5-200 characters')
+    .escape(),
+
   body('description')
     .trim()
     .notEmpty()
     .withMessage('Problem description is required')
     .isLength({ min: 50, max: 5000 })
     .withMessage('Description must be between 50-5000 characters'),
-    
+
   body('inputFormat')
     .trim()
     .notEmpty()
     .withMessage('Input format is required'),
-    
+
   body('outputFormat')
     .trim()
     .notEmpty()
     .withMessage('Output format is required'),
-    
+
   body('difficulty')
     .isIn(['Easy', 'Medium', 'Hard'])
     .withMessage('Difficulty must be Easy, Medium, or Hard'),
-    
+
   body('testCases')
     .isArray({ min: 1, max: 50 })
-    .withMessage('Must provide 1-50 test cases'),
-    
+    .withMessage('Must provide 1-50 test cases')
+    .custom((testCases) => {
+      for (const testCase of testCases) {
+        if (!testCase.input || !testCase.output) {
+          throw new Error('Each test case must have input and output');
+        }
+      }
+      return true;
+    }),
+
   body('sampleTestCases')
     .isArray({ min: 1, max: 10 })
-    .withMessage('Must provide 1-10 sample test cases'),
-    
+    .withMessage('Must provide 1-10 sample test cases')
+    .custom((sampleTestCases) => {
+      for (const testCase of sampleTestCases) {
+        if (!testCase.input || !testCase.output) {
+          throw new Error('Each sample test case must have input and output');
+        }
+      }
+      return true;
+    }),
+
   body('tags')
     .optional()
     .isArray({ max: 10 })
     .withMessage('Maximum 10 tags allowed'),
-    
+
   body('timeLimit')
     .optional()
     .isInt({ min: 100, max: 10000 })
     .withMessage('Time limit must be between 100-10000 milliseconds'),
-    
+
   body('memoryLimit')
     .optional()
     .isInt({ min: 16, max: 1024 })
     .withMessage('Memory limit must be between 16-1024 MB')
 ];
 
-// Code Submission Validation  
+// Code Submission Validation
 exports.submissionValidation = [
   body('problemId')
     .notEmpty()
@@ -129,76 +285,42 @@ exports.submissionValidation = [
       }
       return true;
     }),
-    
+
   body('language')
     .notEmpty()
     .withMessage('Programming language is required')
     .isIn(['cpp', 'java', 'python', 'javascript'])
     .withMessage('Supported languages: cpp, java, python, javascript'),
-    
+
   body('code')
     .notEmpty()
     .withMessage('Code is required')
     .isLength({ min: 10, max: 50000 })
     .withMessage('Code must be between 10-50000 characters')
     .custom((value) => {
-      // Basic code validation
       if (value.trim().length === 0) {
         throw new Error('Code cannot be empty or only whitespace');
       }
+      
+      // Check for potentially malicious code patterns
+      const dangerousPatterns = [
+        /system\s*\(/i,
+        /exec\s*\(/i,
+        /eval\s*\(/i,
+        /import\s+os/i,
+        /import\s+subprocess/i,
+        /#include\s*<stdlib\.h>/i,
+        /Runtime\.getRuntime\(\)/i
+      ];
+      
+      for (const pattern of dangerousPatterns) {
+        if (pattern.test(value)) {
+          throw new Error('Code contains potentially unsafe operations');
+        }
+      }
+      
       return true;
     })
-];
-
-// User Update Validation
-exports.userUpdateValidation = [
-  body('firstName')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage('First name must be between 1-50 characters')
-    .matches(/^[a-zA-Z\s]+$/)
-    .withMessage('First name can only contain letters and spaces'),
-    
-  body('lastName')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage('Last name must be between 1-50 characters')
-    .matches(/^[a-zA-Z\s]+$/)
-    .withMessage('Last name can only contain letters and spaces'),
-    
-  body('email')
-    .optional()
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Please enter a valid email'),
-    
-  body('username')
-    .optional()
-    .trim()
-    .isLength({ min: 3, max: 20 })
-    .withMessage('Username must be between 3 and 20 characters')
-    .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage('Username can only contain letters, numbers, and underscores'),
-    
-  body('bio')
-    .optional()
-    .trim()
-    .isLength({ max: 500 })
-    .withMessage('Bio cannot exceed 500 characters'),
-    
-  body('country')
-    .optional()
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('Country name too long'),
-    
-  body('institution')
-    .optional()
-    .trim()
-    .isLength({ max: 100 })
-    .withMessage('Institution name too long')
 ];
 
 // Contest Validation
@@ -208,15 +330,16 @@ exports.contestValidation = [
     .notEmpty()
     .withMessage('Contest title is required')
     .isLength({ min: 5, max: 200 })
-    .withMessage('Title must be between 5-200 characters'),
-    
+    .withMessage('Title must be between 5-200 characters')
+    .escape(),
+
   body('description')
     .trim()
     .notEmpty()
     .withMessage('Contest description is required')
     .isLength({ min: 20, max: 2000 })
     .withMessage('Description must be between 20-2000 characters'),
-    
+
   body('startTime')
     .isISO8601()
     .toDate()
@@ -227,7 +350,7 @@ exports.contestValidation = [
       }
       return true;
     }),
-    
+
   body('endTime')
     .isISO8601()
     .toDate()
@@ -238,15 +361,14 @@ exports.contestValidation = [
       }
       
       const duration = new Date(value) - new Date(req.body.startTime);
-      const maxDuration = 7 * 24 * 60 * 60 * 1000; // 7 days
-      
+      const maxDuration = 7 * 24 * 60 * 60 * 1000;
       if (duration > maxDuration) {
         throw new Error('Contest duration cannot exceed 7 days');
       }
       
       return true;
     }),
-    
+
   body('problems')
     .isArray({ min: 1, max: 20 })
     .withMessage('Contest must have 1-20 problems')
@@ -257,7 +379,7 @@ exports.contestValidation = [
       }
       return true;
     }),
-    
+
   body('maxParticipants')
     .optional()
     .isInt({ min: 1, max: 10000 })
@@ -271,45 +393,47 @@ exports.contestUpdateValidation = [
     .trim()
     .isLength({ min: 5, max: 200 })
     .withMessage('Title must be between 5-200 characters'),
-    
+
   body('description')
     .optional()
     .trim()
     .isLength({ min: 20, max: 2000 })
     .withMessage('Description must be between 20-2000 characters'),
-    
+
   body('startTime')
     .optional()
     .isISO8601()
     .toDate()
     .withMessage('Start time must be a valid date'),
-    
+
   body('endTime')
     .optional()
     .isISO8601()
     .toDate()
     .withMessage('End time must be a valid date'),
-    
+
   body('problems')
     .optional()
     .isArray({ min: 1, max: 20 })
     .withMessage('Contest must have 1-20 problems')
 ];
 
-// Validation Middleware
+// Enhanced Validation Middleware
 exports.validate = (validations) => {
   return async (req, res, next) => {
     try {
-      // Run all validations
       await Promise.all(validations.map(validation => validation.run(req)));
       
       const errors = validationResult(req);
+      
       if (!errors.isEmpty()) {
         const formattedErrors = errors.array().map(error => ({
           field: error.path || error.param,
           message: error.msg,
           value: error.value
         }));
+        
+        console.log('Validation errors:', formattedErrors);
         
         return res.status(400).json({
           success: false,
@@ -321,9 +445,18 @@ exports.validate = (validations) => {
       next();
     } catch (error) {
       console.error('Validation middleware error:', error);
+      
+      if (error.name === 'MongoTimeoutError' || error.name === 'MongoNetworkError') {
+        return res.status(503).json({
+          success: false,
+          message: 'Database temporarily unavailable. Please try again.'
+        });
+      }
+      
       return res.status(500).json({
         success: false,
-        message: 'Server error during validation'
+        message: 'Server error during validation',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   };
@@ -337,9 +470,10 @@ exports.validateObjectId = (value, fieldName = 'ID') => {
   return true;
 };
 
+// Enhanced Pagination Validation
 exports.validatePagination = (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20;
+  const limit = Math.min(parseInt(req.query.limit) || 20, 100);
   
   if (page < 1 || page > 1000) {
     return res.status(400).json({
@@ -355,6 +489,20 @@ exports.validatePagination = (req, res, next) => {
     });
   }
   
-  req.pagination = { page, limit, skip: (page - 1) * limit };
+  req.pagination = { 
+    page, 
+    limit, 
+    skip: (page - 1) * limit 
+  };
+  
+  next();
+};
+
+// IP address validation
+exports.validateIPAddress = (req, res, next) => {
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = forwarded ? forwarded.split(/, /)[0] : req.connection.remoteAddress;
+  
+  req.clientIP = ip;
   next();
 };
