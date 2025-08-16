@@ -26,7 +26,7 @@ COPY --from=build /app/build /usr/share/nginx/html
 # COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port 3005
-EXPOSE 3005
+EXPOSE 3005 
 
 # Configure nginx to run on port 3005
 RUN sed -i 's/listen       80;/listen       3005;/' /etc/nginx/conf.d/default.conf
