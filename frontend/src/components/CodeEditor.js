@@ -1,105 +1,95 @@
-import React, { useState, useEffect } from 'react';
-import apiService from '../services/api';
+import React, { useState, useRef, useEffect } from 'react';
+import Editor from '@monaco-editor/react';
 
-const CodeEditor = ({ problem }) => {
-  const [code, setCode] = useState('');
-  const [language, setLanguage] = useState('python');
-  const [output, setOutput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [aiHint, setAiHint] = useState('');
+const CodeEditor = ({ language = 'javascript', theme = 'vs-dark', height = '400px', value = '', onChange, onMount }) => {
+  const [code, setCode] = useState(value);
+  const editorRef = useRef(null);
+  const [isEditorReady, setIsEditorReady] = useState(false);
 
-  const handleSubmit = async () => {
-    setLoading(true);
-    try {
-      const result = await apiService.submitSolution(problem.id, code, language);
-      if (result.success) {
-        setOutput(`✅ ${result.submission.verdict}
-Passed: ${result.submission.passedTestCases}/${result.submission.totalTestCases}
+  useEffect(() => {
+    setCode(value);
+  }, [value]);
 
-${result.submission.aiExplanation ? '🤖 AI Analysis:\n' + result.submission.aiExplanation : ''}`);
-      } else {
-        setOutput(`❌ Error: ${result.message}`);
-      }
-    } catch (error) {
-      setOutput(`❌ Network Error: ${error.message}`);
+  const handleEditorDidMount = (editor, monaco) => {
+    editorRef.current = editor;
+    setIsEditorReady(true);
+    
+    // Fix cursor and focus issues
+    editor.focus();
+    
+    // Trigger layout update to fix positioning
+    setTimeout(() => {
+      editor.layout();
+    }, 100);
+
+    // Call parent onMount if provided
+    if (onMount) {
+      onMount(editor, monaco);
     }
-    setLoading(false);
+
+    // Configure editor options to fix cursor issues
+    editor.updateOptions({
+      selectOnLineNumbers: true,
+      roundedSelection: false,
+      readOnly: false,
+      cursorStyle: 'line',
+      automaticLayout: true,
+      scrollBeyondLastLine: false,
+      wordWrap: 'on',
+      minimap: { enabled: false },
+      fontSize: 14,
+      fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
+    });
   };
 
-  const handleGetHint = async () => {
-    if (!code.trim()) {
-      setAiHint('Please write some code first to get a hint!');
-      return;
+  const handleEditorChange = (newValue) => {
+    setCode(newValue);
+    if (onChange) {
+      onChange(newValue);
     }
+  };
 
-    try {
-      const result = await apiService.getHint(problem.id, code, language);
-      if (result.success) {
-        setAiHint(`💡 AI Hint:\n${result.hint}`);
-      } else {
-        setAiHint('❌ Unable to generate hint. Please try again.');
-      }
-    } catch (error) {
-      setAiHint('❌ Network error getting hint.');
-    }
+  const editorOptions = {
+    selectOnLineNumbers: true,
+    roundedSelection: false,
+    readOnly: false,
+    cursorStyle: 'line',
+    automaticLayout: true,
+    scrollBeyondLastLine: false,
+    wordWrap: 'on',
+    minimap: { enabled: false },
+    fontSize: 14,
+    fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
+    lineNumbers: 'on',
+    glyphMargin: false,
+    folding: false,
+    lineDecorationsWidth: 0,
+    lineNumbersMinChars: 3,
+    renderLineHighlight: 'line',
+    theme: theme
   };
 
   return (
-    <div className="code-editor">
-      <div className="editor-header">
-        <h3>Code Submission</h3>
-        <select 
-          value={language} 
-          onChange={(e) => setLanguage(e.target.value)}
-          className="language-selector"
-        >
-          <option value="python">Python</option>
-          <option value="cpp">C++</option>
-          <option value="java">Java</option>
-          <option value="javascript">JavaScript</option>
-        </select>
-      </div>
-
-      <textarea
+    <div 
+      style={{
+        textAlign: 'left',
+        height: height, 
+        width: '100%',
+        border: '1px solid #d0d7de',
+        borderRadius: '6px',
+        overflow: 'hidden'
+      }}
+    >
+      <Editor
+        height={height}
+        language={language}
+        theme={theme}
         value={code}
-        onChange={(e) => setCode(e.target.value)}
-        placeholder={`Write your ${language} solution here...`}
-        rows={20}
-        cols={80}
-        className="code-textarea"
+        onChange={handleEditorChange}
+        onMount={handleEditorDidMount}
+        options={editorOptions}
+        loading={<div>Loading editor...</div>}
       />
-
-      <div className="editor-actions">
-        <button 
-          onClick={handleSubmit} 
-          disabled={loading || !code.trim()}
-          className="submit-btn"
-        >
-          {loading ? '⏳ Submitting...' : '🚀 Submit Solution'}
-        </button>
-        
-        <button 
-          onClick={handleGetHint}
-          disabled={loading || !code.trim()}
-          className="hint-btn"
-        >
-          💡 Get AI Hint
-        </button>
-      </div>
-
-      {output && (
-        <div className="output-section">
-          <h4>Result:</h4>
-          <pre className="output-text">{output}</pre>
-        </div>
-      )}
-
-      {aiHint && (
-        <div className="hint-section">
-          <h4>AI Hint:</h4>
-          <pre className="hint-text">{aiHint}</pre>
-        </div>
-      )}
     </div>
   );
 };

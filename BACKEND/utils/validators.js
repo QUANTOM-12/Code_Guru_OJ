@@ -1,6 +1,7 @@
 const { body, validationResult } = require('express-validator');
 const mongoose = require('mongoose');
 const User = require('../models/User');
+// In your validation logic
 
 // User Registration Validation with Database Checks
 exports.registerValidation = [
@@ -506,3 +507,6 @@ exports.validateIPAddress = (req, res, next) => {
   req.clientIP = ip;
   next();
 };
+
+const isCorrect = actualOutput.trim() === expectedOutput.trim();
+return isCorrect;

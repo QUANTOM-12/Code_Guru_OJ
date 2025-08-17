@@ -1,62 +1,110 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const compilerRoutes = require('./routes/compilerRoutes');
+import React, { Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 
-const app = express();
-const PORT = process.env.PORT || 5001;
+// Layout Components
+import Navbar from './components/Layout/Navbar';
+import Footer from './components/Layout/Footer';
+import LoadingSpinner from './components/UI/LoadingSpinner';
 
-// Security middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3005',
-  credentials: true
-}));
+// Lazy load components for better performance
+const Home = React.lazy(() => import('./pages/Home'));
+const Problems = React.lazy(() => import('./pages/Problems'));
+const ProblemDetail = React.lazy(() => import('./pages/ProblemDetail'));
+const Contests = React.lazy(() => import('./pages/Contests'));
+const ContestDetail = React.lazy(() => import('./pages/ContestDetail'));
+const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
+const Profile = React.lazy(() => import('./pages/Profile'));
+const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const Submissions = React.lazy(() => import('./pages/Submissions'));
+const Login = React.lazy(() => import('./pages/Auth/Login'));
+const Register = React.lazy(() => import('./pages/Auth/Register'));
+const Compiler = React.lazy(() => import('./pages/Compiler'));
+const Admin = React.lazy(() => import('./pages/Admin'));
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// Routes
-app.use('/api/compiler', compilerRoutes);
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    message: 'Code Guru Compiler Service is running',
-    timestamp: new Date().toISOString(),
-    ai_enabled: !!process.env.GEMINI_API_KEY
-  });
-});
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error('Server Error:', error);
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error',
-    message: error.message
-  });
-});
-
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Endpoint not found'
-  });
-});
-
-app.listen(PORT, () => {
-  console.log(`🔧 Code Guru Compiler running on port ${PORT}`);
-  console.log(`🤖 AI Integration: ${process.env.GEMINI_API_KEY ? 'ENABLED' : 'DISABLED'}`);
+// Protected Route Component
+const ProtectedRoute = ({ children, requireAuth = true, requireAdmin = false }) => {
+  const { user, loading } = useAuth();
   
-  // Debug: Print the API key (first few chars only for security)
-  if (process.env.GEMINI_API_KEY) {
-    console.log(`✅ Gemini API Key loaded: ${process.env.GEMINI_API_KEY.substring(0, 8)}...`);
+  if (loading) {
+    return <LoadingSpinner />;
   }
-});
+  
+  if (requireAuth && !user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (requireAdmin && (!user || user.role !== 'admin')) {
+    return <Navigate to="/" replace />;
+  }
+  
+  return children;
+};
 
-module.exports = app;
+// Main App Component
+function App() {
+  return (
+    <AuthProvider>
+      <ToastProvider>
+        <Router>
+          <div className="App min-h-screen flex flex-col">
+            <Navbar />
+            
+            <main className="flex-grow">
+              <Suspense fallback={<LoadingSpinner />}>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Home />} />
+                  <Route path="/problems" element={<Problems />} />
+                  <Route path="/problems/:id" element={<ProblemDetail />} />
+                  <Route path="/contests" element={<Contests />} />
+                  <Route path="/contests/:id" element={<ContestDetail />} />
+                  <Route path="/leaderboard" element={<Leaderboard />} />
+                  <Route path="/compiler" element={<Compiler />} />
+                  
+                  {/* Auth Routes */}
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  
+                  {/* Protected Routes */}
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } />
+                  
+                  <Route path="/profile" element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  } />
+                  
+                  <Route path="/submissions" element={
+                    <ProtectedRoute>
+                      <Submissions />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Admin Routes */}
+                  <Route path="/admin/*" element={
+                    <ProtectedRoute requireAdmin={true}>
+                      <Admin />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Catch all route - 404 */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
+            </main>
+            
+            <Footer />
+          </div>
+        </Router>
+      </ToastProvider>
+    </AuthProvider>
+  );
+}
+
+export default App;

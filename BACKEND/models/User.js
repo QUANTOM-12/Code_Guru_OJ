@@ -23,7 +23,7 @@ const UserSchema = new mongoose.Schema({
     minlength: [3, 'Username must be at least 3 characters'],
     maxlength: [30, 'Username cannot be more than 30 characters'],
     trim: true,
-    index: true // For faster lookups
+    index: true
   },
   email: {
     type: String,
@@ -119,7 +119,7 @@ const UserSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound indexes for better performance
+// Indexes for performance
 UserSchema.index({ email: 1, username: 1 });
 UserSchema.index({ 'stats.rating': -1 });
 
@@ -134,7 +134,6 @@ UserSchema.virtual('isLocked').get(function() {
 
 // Encrypt password before saving
 UserSchema.pre('save', async function(next) {
-  // Only hash password if it was modified (or new)
   if (!this.isModified('password')) return next();
   
   try {
@@ -168,7 +167,6 @@ UserSchema.methods.matchPassword = async function(enteredPassword) {
 
 // Handle login attempts and account locking
 UserSchema.methods.incLoginAttempts = function() {
-  // If we have a previous lock that has expired, restart at 1
   if (this.lockUntil && this.lockUntil < Date.now()) {
     return this.updateOne({
       $unset: {
@@ -182,7 +180,6 @@ UserSchema.methods.incLoginAttempts = function() {
   
   const updates = { $inc: { loginAttempts: 1 } };
   
-  // If we hit max attempts and we're not locked yet, lock the account
   if (this.loginAttempts + 1 >= MAX_LOGIN_ATTEMPTS && !this.isLocked) {
     updates.$set = {
       lockUntil: Date.now() + LOCK_TIME
@@ -207,16 +204,13 @@ UserSchema.methods.resetLoginAttempts = function() {
 
 // Generate email verification token
 UserSchema.methods.getEmailVerificationToken = function() {
-  // Generate token
   const verificationToken = crypto.randomBytes(20).toString('hex');
   
-  // Hash token and set to emailVerificationToken field
   this.emailVerificationToken = crypto
     .createHash('sha256')
     .update(verificationToken)
     .digest('hex');
   
-  // Set expire (10 minutes)
   this.emailVerificationExpires = Date.now() + 10 * 60 * 1000;
   
   return verificationToken;
@@ -224,16 +218,13 @@ UserSchema.methods.getEmailVerificationToken = function() {
 
 // Generate and hash password reset token
 UserSchema.methods.getResetPasswordToken = function() {
-  // Generate token
   const resetToken = crypto.randomBytes(20).toString('hex');
   
-  // Hash token and set to resetPasswordToken field
   this.passwordResetToken = crypto
     .createHash('sha256')
     .update(resetToken)
     .digest('hex');
   
-  // Set expire (10 minutes)
   this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
   
   return resetToken;
@@ -252,23 +243,18 @@ UserSchema.statics.getAuthenticated = async function(identifier, password, ipAdd
     return { success: false, message: 'Invalid credentials' };
   }
   
-  // Check if account is locked
   if (user.isLocked) {
     return { success: false, message: 'Account temporarily locked due to too many failed login attempts' };
   }
   
-  // Check if account is active
   if (!user.isActive) {
     return { success: false, message: 'Account has been deactivated' };
   }
   
-  // Test for a matching password
   const isMatch = await user.matchPassword(password);
   
   if (isMatch) {
-    // If there's no lock or failed attempts, just return the user
     if (!user.loginAttempts && !user.lockUntil) {
-      // Update last login info
       await user.updateOne({
         $set: {
           lastLogin: Date.now(),
@@ -278,7 +264,6 @@ UserSchema.statics.getAuthenticated = async function(identifier, password, ipAdd
       return { success: true, user };
     }
     
-    // Reset attempts and return user
     await user.resetLoginAttempts();
     await user.updateOne({
       $set: {
@@ -288,7 +273,6 @@ UserSchema.statics.getAuthenticated = async function(identifier, password, ipAdd
     return { success: true, user };
   }
   
-  // Password is incorrect, so increment login attempts
   await user.incLoginAttempts();
   return { success: false, message: 'Invalid credentials' };
 };
